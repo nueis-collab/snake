@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>정원 뱀 게임</title>
+<style>
+  :root{
+    --soil: #2f3b2a;
+    --path-a: #e9e2c9;
+    --path-b: #ded5b6;
+    --ink: #2b2a25;
+    --paper: #f6f1e2;
+    --accent: #c9603a;
+    --accent-soft: #e8b04b;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; min-height:100%;
+    background: radial-gradient(ellipse at top, #3c4a33, #1e2519 75%);
+    display:flex; align-items:center; justify-content:center;
+    font-family: 'Georgia', 'Nanum Myeongjo', serif;
+    color: var(--ink);
+    padding: 12px;
+  }
+  .frame{
+    display:flex; flex-direction:column; align-items:center;
+    gap:14px;
+    width: 100%;
+    max-width: 460px;
+    padding: 18px 18px 22px;
+    background: var(--paper);
+    border-radius: 18px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.06);
+  }
+  h1{
+    margin:0;
+    font-size: 22px;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  h1 .leaf{ color: #5a8c4f; }
+  .hud{
+    display:flex; justify-content:space-between; align-items:center;
+    width: 100%;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: #6b6555;
+    gap: 10px;
+  }
+  .hud .stat{ display:flex; flex-direction:column; align-items:flex-start; }
+  .hud .stat.right{ align-items:flex-end; }
+  .hud .num{
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'Trebuchet MS', sans-serif;
+  }
+  .skinBtn{
+    background: #e3dcc4;
+    color: var(--ink);
+    border: none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .skinBtn:hover{ background: var(--accent-soft); }
+  .overlay .skinBtn{ margin-top: 4px; }
+  #board{
+    display:block;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.35), inset 0 0 0 6px var(--soil);
+    background: var(--soil);
+    touch-action: none;
+  }
+  .hint{
+    font-size: 12px;
+    color: #8a836e;
+    letter-spacing: 0.04em;
+    text-align:center;
+    max-width: 420px;
+  }
+  .overlay{
+    position: fixed; inset:0;
+    background: rgba(20,22,15,0.72);
+    display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px;
+    color: var(--paper);
+    text-align:center;
+    backdrop-filter: blur(2px);
+    padding: 20px;
+    z-index: 10;
+  }
+  .overlay.show{ display:flex; }
+  .overlay h2{ margin:0; font-size: 30px; letter-spacing:0.05em; }
+  .overlay p{ margin:0; color:#cfc9b4; font-size:14px; line-height:1.6; }
+  button.primary{
+    margin-top: 6px;
+    background: var(--accent);
+    color: #fff8ec;
+    border:none;
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 6px 14px rgba(201,96,58,0.45);
+  }
+  button.primary:hover{ background:#b5502e; }
+  .skinGrid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(140px,1fr));
+    gap: 12px;
+    max-width: 420px;
+    margin-top: 6px;
+  }
+  .skinCard{
+    background: rgba(246,241,226,0.08);
+    border: 1px solid rgba(246,241,226,0.25);
+    border-radius: 12px;
+    padding: 12px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer;
+  }
+  .skinCard.locked{ opacity:0.45; cursor:not-allowed; }
+  .skinCard.active{ border-color: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-soft) inset; }
+  .swatch{
+    width: 54px; height: 22px; border-radius: 8px;
+    display:flex;
+  }
+  .swatch span{ flex:1; }
+  .skinCard .name{ font-size: 13px; font-weight:700; }
+  .skinCard .req{ font-size: 11px; color:#cfc9b4; }
+  .closeSkinBtn{
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid rgba(246,241,226,0.4);
+    color: var(--paper);
+    padding: 8px 18px;
+    border-radius: 999px;
+    cursor:pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .arrows{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 2;
+    margin-top: 4px;
+  }
+  .arrows button{
+    margin:0; padding:0; font-size:34px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+    background:#e3dcc4; color:var(--ink);
+    border:none; border-radius:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .arrows button:active{ background: var(--accent-soft); box-shadow: 0 1px 0 rgba(0,0,0,0.15); transform: translateY(2px); }
+  #up{ grid-column:2; grid-row:1; }
+  #left{ grid-column:1; grid-row:2; }
+  #down{ grid-column:2; grid-row:2; }
+  #right{ grid-column:3; grid-row:2; }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <h1><span class="leaf">✿</span> 정원 뱀 게임</h1>
+  <div class="hud">
+    <div class="stat">
+      <span>길이</span>
+      <span class="num" id="lengthNum">3</span>
+    </div>
+    <button class="skinBtn" id="skinOpenBtn">🎨 스킨</button>
+    <div class="stat right">
+      <span>점수</span>
+      <span class="num" id="scoreNum">0</span>
+    </div>
+  </div>
+  <canvas id="board" width="450" height="450"></canvas>
+  <div class="arrows">
+    <button id="up">▲</button>
+    <button id="left">◀</button>
+    <button id="down">▼</button>
+    <button id="right">▶</button>
+  </div>
+</div>
+
+<div class="overlay show" id="startOverlay">
+  <h2>✿ 정원 뱀 게임</h2>
+  <p>십자키로 방향을 바꿔 뱀을 조종하세요.<br>꽃 하나당 100점, 먹을 때마다 몸이 길어져요.<br>시간이 지날수록 꽃이 점점 많아지고, 맵이 3/4 이상 차면 폭발적으로 늘어나요.<br>맵을 전부 채우면 클리어, 벽이나 몸에 닿으면 게임 오버예요.</p>
+  <button class="primary" id="startBtn">시작하기</button>
+  <button class="skinBtn" id="startSkinBtn">🎨 스킨 확인</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <h2 id="overlayTitle">게임 오버</h2>
+  <p id="overlayText"></p>
+  <button class="primary" id="restartBtn">다시 시작</button>
+  <button class="skinBtn" id="overSkinBtn">🎨 스킨 확인</button>
+</div>
+
+<div class="overlay" id="skinOverlay">
+  <h2>🎨 뱀 스킨</h2>
+  <p>점수를 모아 새로운 스킨을 잠금 해제하세요. (최고 점수 기준)</p>
+  <div class="skinGrid" id="skinGrid"></div>
+  <button class="closeSkinBtn" id="closeSkinBtn">닫기</button>
+</div>
+
+<script>
+(function(){
+  const COLS = 15, ROWS = 15;
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const CELL = canvas.width / COLS;
+  const TOTAL_CELLS = COLS * ROWS;
+
+  const lengthNumEl = document.getElementById('lengthNum');
+  const scoreNumEl = document.getElementById('scoreNum');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const startOverlay = document.getElementById('startOverlay');
+  const skinOverlay = document.getElementById('skinOverlay');
+  const skinGrid = document.getElementById('skinGrid');
+
+  const FLOWER_POINTS = 100;
+  const ENDGAME_FILL_RATIO = 0.75; // 3/4 이상 채우면 폭발적으로 증가
+
+  const flowerPalette = [
+    { petal:'#e8547a', center:'#f6d24a' },
+    { petal:'#e8b04b', center:'#c9603a' },
+    { petal:'#c98fd6', center:'#f6d24a' },
+    { petal:'#f28c4a', center:'#8a3f1f' },
+    { petal:'#7fb0e0', center:'#f6f1e2' }
+  ];
+
+  const skins = [
+    { id:'sprout',   name:'새싹 그린',   req:0,     head:'#3f6b3a', body:'#5a8c4f', outline:'#24391f' },
+    { id:'yellowblue', name:'노랑파랑 뱀', req:1000,  head:'#2f6fb0', body:'#f6d24a', outline:'#1a3f66' },
+    { id:'red',      name:'빨강 뱀',     req:5000,  head:'#8f1f1f', body:'#e2483f', outline:'#4d0e0e' },
+    { id:'purple',   name:'보라색 뱀',   req:7000,  head:'#5a2b7a', body:'#9a5fc2', outline:'#2f1440' },
+    { id:'gold',     name:'황금 뱀',     req:10000, head:'#b8860b', body:'#f0c14b', outline:'#5c3d00' }
+  ];
+
+  let snake, dir, nextDir, flowers, alive, tickMs, score, bestScore, moveTimer, flowerTimer;
+  let currentSkinId = 'sprout';
+  bestScore = 0;
+
+  function reset(){
+    snake = [ {x:7,y:7}, {x:6,y:7}, {x:5,y:7} ]; // head first, length 3
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    alive = true;
+    tickMs = 210;
+    score = 0;
+    flowers = [];
+    addFlower();
+    updateHud();
+    overlay.classList.remove('show');
+    if(moveTimer) clearInterval(moveTimer);
+    if(flowerTimer) clearInterval(flowerTimer);
+    moveTimer = setInterval(step, tickMs);
+    flowerTimer = setInterval(flowerTick, 400);
+    draw();
+  }
+
+  function setupBoard(){
+    snake = [ {x:7,y:7}, {x:6,y:7}, {x:5,y:7} ];
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    alive = true;
+    score = 0;
+    flowers = [];
+    addFlower();
+    updateHud();
+    draw();
+  }
+
+  function updateHud(){
+    lengthNumEl.textContent = snake.length;
+    scoreNumEl.textContent = score;
+  }
+
+  function occupied(x,y){
+    return snake.some(s=>s.x===x && s.y===y) || flowers.some(f=>f.x===x && f.y===y);
+  }
+
+  function addFlower(){
+    if(snake.length + flowers.length >= TOTAL_CELLS) return;
+    let pos, tries = 0;
+    do{
+      pos = { x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS) };
+      tries++;
+    } while(tries < 200 && occupied(pos.x, pos.y));
+    if(occupied(pos.x, pos.y)) return;
+    const colors = flowerPalette[Math.floor(Math.random()*flowerPalette.length)];
+    flowers.push({ ...pos, ...colors });
+  }
+
+  function fillAllEmptyWithFlowers(){
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        if(!occupied(x,y)){
+          const colors = flowerPalette[Math.floor(Math.random()*flowerPalette.length)];
+          flowers.push({x,y,...colors});
+        }
+      }
+    }
+  }
+
+  function flowerTick(){
+    if(!alive) return;
+    const fillRatio = snake.length / TOTAL_CELLS;
+    if(fillRatio >= ENDGAME_FILL_RATIO){
+      fillAllEmptyWithFlowers();
+    } else {
+      const chance = 0.15 + fillRatio * 0.7; // 채워질수록 등장 확률 증가
+      if(Math.random() < chance){
+        addFlower();
+      }
+    }
+  }
+
+  function step(){
+    if(!alive) return;
+
+    if(!(nextDir.x === -dir.x && nextDir.y === -dir.y)){
+      dir = nextDir;
+    }
+
+    const head = snake[0];
+    const newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+    if(newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS){
+      return gameOver();
+    }
+
+    const eatenIndex = flowers.findIndex(f => f.x === newHead.x && f.y === newHead.y);
+    const willGrow = eatenIndex !== -1;
+    const bodyToCheck = willGrow ? snake : snake.slice(0, snake.length - 1);
+    if(bodyToCheck.some(s => s.x === newHead.x && s.y === newHead.y)){
+      return gameOver();
+    }
+
+    snake.unshift(newHead);
+
+    if(willGrow){
+      flowers.splice(eatenIndex, 1);
+      score += FLOWER_POINTS;
+      if(score > bestScore){
+        bestScore = score;
+        refreshSkinLocks();
+      }
+      updateHud();
+
+      if(snake.length >= TOTAL_CELLS){
+        draw();
+        return win();
+      }
+
+      addFlower();
+      tickMs = Math.max(110, tickMs - 3);
+      clearInterval(moveTimer);
+      moveTimer = setInterval(step, tickMs);
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function gameOver(){
+    alive = false;
+    clearInterval(moveTimer);
+    clearInterval(flowerTimer);
+    overlayTitle.textContent = '게임 오버';
+    overlayText.textContent = `맵을 다 채우지 못했어요. 길이 ${snake.length}, 점수 ${score}점으로 쓰러졌어요.`;
+    overlay.classList.add('show');
+  }
+
+  function win(){
+    alive = false;
+    clearInterval(moveTimer);
+    clearInterval(flowerTimer);
+    overlayTitle.textContent = '정원 정복! 클리어';
+    overlayText.textContent = `${TOTAL_CELLS}칸을 전부 채웠어요! 최종 점수 ${score}점.`;
+    overlay.classList.add('show');
+  }
+
+  function draw(){
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        ctx.fillStyle = (x+y)%2===0 ? '#3a4a30' : '#34412a';
+        ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+      }
+    }
+
+    flowers.forEach(f => drawFlower(f.x, f.y, f.petal, f.center));
+
+    const skin = skins.find(s => s.id === currentSkinId) || skins[0];
+
+    snake.forEach((seg, i) => {
+      const isHead = i === 0;
+      ctx.fillStyle = isHead ? skin.head : skin.body;
+      const pad = isHead ? 1 : 2;
+      roundRect(seg.x*CELL+pad, seg.y*CELL+pad, CELL-pad*2, CELL-pad*2, 6);
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(skin.outline, 0.6);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      if(isHead){
+        ctx.fillStyle = '#f6f1e2';
+        const cx = seg.x*CELL + CELL/2;
+        const cy = seg.y*CELL + CELL/2;
+        const ex = dir.x * CELL*0.18;
+        const ey = dir.y * CELL*0.18;
+        const perpX = -dir.y * CELL*0.16;
+        const perpY = dir.x * CELL*0.16;
+        ctx.beginPath();
+        ctx.arc(cx+ex+perpX, cy+ey+perpY, 2.4, 0, Math.PI*2);
+        ctx.arc(cx+ex-perpX, cy+ey-perpY, 2.4, 0, Math.PI*2);
+        ctx.fill();
+      }
+    });
+  }
+
+  function hexToRgba(hex, alpha){
+    const h = hex.replace('#','');
+    const r = parseInt(h.substring(0,2),16);
+    const g = parseInt(h.substring(2,4),16);
+    const b = parseInt(h.substring(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function drawFlower(gx, gy, petalColor, centerColor){
+    const cx = gx*CELL + CELL/2;
+    const cy = gy*CELL + CELL/2;
+    const r = CELL*0.16;
+    ctx.save();
+    ctx.translate(cx, cy);
+    for(let i=0;i<5;i++){
+      ctx.save();
+      ctx.rotate((Math.PI*2/5)*i);
+      ctx.beginPath();
+      ctx.fillStyle = petalColor;
+      ctx.ellipse(0, -r*1.3, r*0.85, r*1.3, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.beginPath();
+    ctx.fillStyle = centerColor;
+    ctx.arc(0, 0, r*0.75, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function setDir(x,y){ nextDir = {x,y}; }
+
+  document.addEventListener('keydown', (e) => {
+    switch(e.key){
+      case 'ArrowUp': setDir(0,-1); e.preventDefault(); break;
+      case 'ArrowDown': setDir(0,1); e.preventDefault(); break;
+      case 'ArrowLeft': setDir(-1,0); e.preventDefault(); break;
+      case 'ArrowRight': setDir(1,0); e.preventDefault(); break;
+    }
+  });
+
+  document.getElementById('up').addEventListener('click', ()=>setDir(0,-1));
+  document.getElementById('down').addEventListener('click', ()=>setDir(0,1));
+  document.getElementById('left').addEventListener('click', ()=>setDir(-1,0));
+  document.getElementById('right').addEventListener('click', ()=>setDir(1,0));
+  document.getElementById('restartBtn').addEventListener('click', reset);
+  document.getElementById('startBtn').addEventListener('click', () => {
+    startOverlay.classList.remove('show');
+    reset();
+  });
+
+  // ---- 스킨 UI ----
+  function renderSkinGrid(){
+    skinGrid.innerHTML = '';
+    skins.forEach(skin => {
+      const unlocked = bestScore >= skin.req;
+      const card = document.createElement('div');
+      card.className = 'skinCard' + (unlocked ? '' : ' locked') + (skin.id === currentSkinId ? ' active' : '');
+      card.innerHTML = `
+        <div class="swatch"><span style="background:${skin.head}"></span><span style="background:${skin.body}"></span></div>
+        <div class="name">${skin.name}</div>
+        <div class="req">${unlocked ? (skin.id===currentSkinId ? '적용 중' : '선택 가능') : skin.req + '점 필요'}</div>
+      `;
+      if(unlocked){
+        card.addEventListener('click', () => {
+          currentSkinId = skin.id;
+          renderSkinGrid();
+          draw();
+        });
+      }
+      skinGrid.appendChild(card);
+    });
+  }
+
+  function refreshSkinLocks(){
+    if(skinOverlay.classList.contains('show')){
+      renderSkinGrid();
+    }
+  }
+
+  document.getElementById('skinOpenBtn').addEventListener('click', () => {
+    renderSkinGrid();
+    skinOverlay.classList.add('show');
+  });
+  document.getElementById('startSkinBtn').addEventListener('click', () => {
+    renderSkinGrid();
+    skinOverlay.classList.add('show');
+  });
+  document.getElementById('overSkinBtn').addEventListener('click', () => {
+    renderSkinGrid();
+    skinOverlay.classList.add('show');
+  });
+  document.getElementById('closeSkinBtn').addEventListener('click', () => {
+    skinOverlay.classList.remove('show');
+  });
+
+  setupBoard();
+})();
+</script>
+
+</body>
+</html>
